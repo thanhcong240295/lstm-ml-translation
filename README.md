@@ -201,6 +201,38 @@ Removes:
 
 ## 📚 Data Format
 
+### Dataset Source
+
+**Kaggle English-Vietnamese Translation Dataset**
+
+This project uses the English-Vietnamese translation dataset from Kaggle:
+- **Dataset Name:** English-Vietnamese Translation Dataset
+- **Link:** https://www.kaggle.com/datasets/hungnm/englishvietnamese-translation/data
+- **Author:** Hung NM
+- **Size:** 133,317 sentence pairs
+- **Format:** Text files (one sentence per line)
+- **Language Pair:** English ↔ Vietnamese
+
+### How to Download Dataset
+
+1. **Visit Kaggle:**
+   - Go to: https://www.kaggle.com/datasets/hungnm/englishvietnamese-translation/data
+
+2. **Download the dataset:**
+   - Click "Download" button
+   - Or use Kaggle API: `kaggle datasets download -d hungnm/englishvietnamese-translation`
+
+3. **Extract files:**
+   ```bash
+   unzip englishvietnamese-translation.zip
+   ```
+
+4. **Place in project:**
+   ```bash
+   mv train.en.txt dataset/
+   mv train.vi.txt dataset/
+   ```
+
 ### Dataset Structure
 
 Create a `dataset/` folder with two text files:
@@ -209,6 +241,7 @@ Create a `dataset/` folder with two text files:
 ```
 The cat sits on the mat .
 I love machine learning .
+Hello world .
 ...
 ```
 
@@ -216,13 +249,39 @@ I love machine learning .
 ```
 Con mèo ngồi trên tấm thảm .
 Tôi yêu học máy .
+Xin chào thế giới .
 ...
 ```
 
-Requirements:
+### Dataset Statistics
+
+| Metric | Value |
+|--------|-------|
+| Total pairs | 133,317 |
+| Languages | English-Vietnamese |
+| Lines per file | 133,317 |
+| Encoding | UTF-8 |
+| Format | Plain text |
+| File size | ~4-5 MB each |
+| Coverage | ~95% vocabulary |
+
+### Requirements
+
 - One sentence per line
 - Matching number of lines in both files
 - UTF-8 encoding
+- Sentences should be tokenized (words separated by spaces)
+- Optional: Remove extra whitespace
+
+### Data Preprocessing
+
+The project automatically:
+- Lowercases all text
+- Removes punctuation
+- Tokenizes sentences
+- Pads/truncates to MAX_LEN
+- Builds vocabulary
+- Creates embeddings
 
 ## 🎯 Model Training Details
 

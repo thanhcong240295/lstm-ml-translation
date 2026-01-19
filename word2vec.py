@@ -22,6 +22,22 @@ class Word2VecEmbedding:
 
         return result
 
+    def save_model(self, model: Word2Vec, path: str):
+        model.save(path)
+
+    def load_model(self, path: str) -> Word2Vec:
+        model = Word2Vec.load(path)
+        return model
+    
+    def build_embedding_matrix(self, vocab, w2v_model, embed_dim):
+        W = np.zeros((len(vocab.word2idx), embed_dim))
+        for word, idx in vocab.word2idx.items():
+            if word in w2v_model.wv:
+                W[idx] = w2v_model.wv[word]
+            else:
+                W[idx] = np.random.randn(embed_dim) * 0.1
+        return W
+
     def _train(self, sentences: list[list[str]], vector_size=100, window=5, min_count=1, workers=4):
         model = Word2Vec(
             sentences=sentences,

@@ -5,6 +5,10 @@ from nltk.tokenize import word_tokenize
 
 
 class Preprocessor:
+    def preprocess_str(self, text: str) -> list:
+        tokens = self._preprocess_data(text)
+        return tokens
+
     def preprocess(self, dir_path: str) -> dict:
         dataset_folder = os.path.join(os.path.dirname(__file__), dir_path)
         if not os.path.exists(dataset_folder) or not os.path.isdir(dataset_folder):

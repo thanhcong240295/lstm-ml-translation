@@ -35,14 +35,12 @@ def validate_arguments():
     if "--translate" in sys.argv:
         translate_idx = sys.argv.index("--translate")
         if translate_idx + 1 < len(sys.argv):
-            translate_path = sys.argv[translate_idx + 1]
-            if not os.path.exists(translate_path):
-                sys.exit(1)
-            if not os.path.isdir(translate_path):
-                sys.exit(1)
+            translate_text = sys.argv[translate_idx + 1]
             sys.argv.pop(translate_idx)
             sys.argv.pop(translate_idx)
         else:
             sys.exit(1)
+    else:
+        translate_text = None
 
-    return dataset_path, model_path, translate_path
+    return dataset_path, model_path, translate_text

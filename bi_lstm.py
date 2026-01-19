@@ -4,7 +4,7 @@ from lstm import LSTMCell
 
 
 class BiLSTM:
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size=256, hidden_size=256):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.forward_lstm = LSTMCell(input_size, hidden_size)

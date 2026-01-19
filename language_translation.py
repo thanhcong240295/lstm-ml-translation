@@ -8,7 +8,7 @@ from visualization import Visualization
 
 
 class LanguageTranslation:
-    def __init__(self, input_size=128, hidden_size=256, use_attention=True):
+    def __init__(self, input_size=128, hidden_size=256, use_attention=False):
         self.bi_lstm = BiLSTM(input_size=input_size, hidden_size=hidden_size)
         self.input_size = input_size
         self.hidden_size = hidden_size

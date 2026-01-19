@@ -31,7 +31,7 @@ def main():
         language_translation = LanguageTranslation(
             input_size=EMBEDDING_DIM,
             hidden_size=EMBEDDING_DIM,
-            use_attention=True,
+            use_attention=False,
         )
         language_translation.train(
             epochs=EPOCHS,
@@ -40,7 +40,7 @@ def main():
             dict_data=source_dict,
             word2vec_models=word2vec_models,
         )
-        # language_translation.save_model(model_path)
+        language_translation.save_model(model_path)
 
 
 if __name__ == "__main__":

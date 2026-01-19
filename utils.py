@@ -1,6 +1,8 @@
 import os
 import sys
 
+import numpy as np
+
 
 def validate_arguments():
     dataset_path = None
@@ -43,3 +45,19 @@ def validate_arguments():
         translate_text = None
 
     return dataset_path, model_path, translate_text
+
+
+def split_train_val(encoded_en, encoded_vi, split_ratio=0.8):
+    total_samples = len(encoded_en)
+    split_idx = int(split_ratio * total_samples)
+
+    indices = np.random.permutation(total_samples)
+    train_indices = indices[:split_idx]
+    val_indices = indices[split_idx:]
+
+    X_train = [encoded_en[i] for i in train_indices]
+    Y_train = [encoded_vi[i] for i in train_indices]
+    X_val = [encoded_en[i] for i in val_indices]
+    Y_val = [encoded_vi[i] for i in val_indices]
+
+    return X_train, Y_train, X_val, Y_val

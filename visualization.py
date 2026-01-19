@@ -82,3 +82,45 @@ class Visualization:
         plt.savefig(filepath, dpi=100)
         plt.close()
         print(f"Loss statistics diagram saved to {filepath}")
+
+    def plot_data_split_cycle(self, train_count, val_count, filename="data_split_cycle.png"):
+        """Plot data split as a pie chart showing train/validation ratio.
+
+        Args:
+            train_count: Number of training samples
+            val_count: Number of validation samples
+            filename: Output filename
+        """
+        fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+
+        total_count = train_count + val_count
+        sizes = [train_count, val_count]
+        labels = [
+            f"Training Data\n{train_count} samples\n({train_count/total_count*100:.1f}%)",
+            f"Validation Data\n{val_count} samples\n({val_count/total_count*100:.1f}%)",
+        ]
+        colors = ["#3498db", "#e74c3c"]
+        explode = (0.05, 0.05)
+
+        wedges, texts, autotexts = ax.pie(
+            sizes,
+            labels=labels,
+            colors=colors,
+            autopct="%1.1f%%",
+            startangle=90,
+            explode=explode,
+            textprops={"fontsize": 11, "weight": "bold"},
+        )
+
+        for autotext in autotexts:
+            autotext.set_color("white")
+            autotext.set_fontsize(12)
+            autotext.set_weight("bold")
+
+        ax.set_title(f"Data Split Distribution (Total: {total_count} samples)", fontsize=14, weight="bold", pad=20)
+
+        plt.tight_layout()
+        filepath = os.path.join(self.output_dir, filename)
+        plt.savefig(filepath, dpi=300, bbox_inches="tight")
+        plt.close()
+        print(f"Data split pie chart saved to {filepath}")

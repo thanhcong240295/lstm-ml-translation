@@ -1,3 +1,5 @@
+import numpy as np
+
 from language_translation import LanguageTranslation
 from preprocessor import Preprocessor
 from utils import validate_arguments
@@ -6,8 +8,8 @@ from word2vec import Word2VecEmbedding
 
 
 def main():
-    EPOCHS = 50
-    LEARNING_RATE = 0.001
+    EPOCHS = 200
+    LEARNING_RATE = 0.1
     EMBEDDING_DIM = 256
     MAX_LEN = 100
 
@@ -19,13 +21,13 @@ def main():
         translate_text_tokenized = preprocessor.preprocess_str(translate_text)
 
         vocab_en = Vocab()
-        vocab_path = model_path + '_train.en.txt' + "_vocab.json"
+        vocab_path = model_path + "_train.en.txt" + "_vocab.json"
         vocab_en_data = vocab_en.load_vocab(vocab_path)
 
         vocab_vi = Vocab()
-        vocab_path = model_path + '_train.vi.txt' + "_vocab.json"
+        vocab_path = model_path + "_train.vi.txt" + "_vocab.json"
         vocab_vi_data = vocab_vi.load_vocab(vocab_path)
-        
+
         word2vecEmbedding = Word2VecEmbedding(sg=1)
         word2vec_path = model_path + "_word2vec.model"
         word2vec_model = word2vecEmbedding.load_model(word2vec_path)
@@ -34,12 +36,13 @@ def main():
         language_translation = LanguageTranslation(
             input_size=EMBEDDING_DIM,
             hidden_size=EMBEDDING_DIM,
-            use_attention=False,
         )
-        lstm_path = model_path + "_lstm.model.npy"
+        lstm_path = model_path + "_BiLSTM.npy"
         language_translation.load_model(lstm_path)
 
-        vietnamese = language_translation.translate(translate_text_tokenized, vocab_en_data, vocab_vi_data, embedding_matrix, max_len=MAX_LEN)
+        vietnamese = language_translation.translate(
+            translate_text_tokenized, vocab_en_data, vocab_vi_data, embedding_matrix, max_len=MAX_LEN
+        )
         print(f"\nOutput: {vietnamese}")
 
     elif dataset_path and model_path:
@@ -61,6 +64,24 @@ def main():
         encoded_vi = vocab_vi.encode(vi_sentences, max_len=MAX_LEN)
         vocab_vi.save_vocab(model_path + "_train.vi.txt_vocab.json")
 
+        # Split data 80/20 for train/validation
+        print("\nSplitting data 80/20...")
+        total_samples = len(encoded_en)
+        split_idx = int(0.8 * total_samples)
+
+        # Shuffle indices for random split
+        indices = np.random.permutation(total_samples)
+        train_indices = indices[:split_idx]
+        val_indices = indices[split_idx:]
+
+        X_train = [encoded_en[i] for i in train_indices]
+        Y_train = [encoded_vi[i] for i in train_indices]
+        X_val = [encoded_en[i] for i in val_indices]
+        Y_val = [encoded_vi[i] for i in val_indices]
+
+        print(f"Training samples: {len(X_train)} (80%)")
+        print(f"Validation samples: {len(X_val)} (20%)")
+
         print("Training Word2Vec embeddings...")
         word2vecEmbedding = Word2VecEmbedding(sg=1)
         word2vec_models = word2vecEmbedding.train(vocab_en, {"train.en.txt": en_sentences}, embed_dim=EMBEDDING_DIM)
@@ -75,18 +96,19 @@ def main():
         language_translation = LanguageTranslation(
             input_size=EMBEDDING_DIM,
             hidden_size=EMBEDDING_DIM,
-            use_attention=False,
         )
         language_translation.train(
             epochs=EPOCHS,
             learning_rate=LEARNING_RATE,
             vocab_source=vocab_en,
             vocab_target=vocab_vi,
-            X_ids=encoded_en,
-            Y_ids=encoded_vi,
-            embedding_matrix=embedding_matrix
+            X_ids_train=X_train,
+            Y_ids_train=Y_train,
+            X_ids_val=X_val,
+            Y_ids_val=Y_val,
+            embedding_matrix=embedding_matrix,
         )
-        language_translation.save_model(model_path + "_lstm.model")
+        language_translation.save_model(model_path + "_BiLSTM")
 
 
 if __name__ == "__main__":

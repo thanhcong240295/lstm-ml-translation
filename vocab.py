@@ -1,5 +1,6 @@
+import json
 import os
-from flask import json
+
 
 class Vocab:
     def __init__(self):
@@ -24,7 +25,7 @@ class Vocab:
 
     def decode(self, indices):
         return [self.idx2word.get(i, "<UNK>") for i in indices]
-    
+
     def save_vocab(self, file_path):
         try:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -43,7 +44,6 @@ class Vocab:
             with open(file_path, "r", encoding="utf-8") as f:
                 vocab_data = json.load(f)
                 self.word2idx = vocab_data["word2idx"]
-                # Convert string keys back to int for idx2word
                 self.idx2word = {int(k): v for k, v in vocab_data["idx2word"].items()}
                 self.size = len(self.word2idx)
                 print(f"Vocabulary loaded from {file_path}")

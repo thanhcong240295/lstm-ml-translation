@@ -33,37 +33,6 @@ class Visualization:
         plt.close()
         print(f"Loss diagram saved to {filepath}")
 
-    def plot_losses_comparison(
-        self, train_losses, val_losses=None, title="Training and Validation Loss", filename="loss_comparison.png"
-    ):
-        """Plot training and validation loss comparison.
-
-        Args:
-            train_losses: List of training loss values
-            val_losses: List of validation loss values (optional)
-            title: Title of the plot
-            filename: Output filename
-        """
-        plt.figure(figsize=(12, 6))
-        epochs = range(1, len(train_losses) + 1)
-
-        plt.plot(epochs, train_losses, "b-", linewidth=2, marker="o", label="Training Loss")
-
-        if val_losses is not None:
-            plt.plot(epochs, val_losses, "r-", linewidth=2, marker="s", label="Validation Loss")
-
-        plt.xlabel("Epoch", fontsize=12)
-        plt.ylabel("Loss", fontsize=12)
-        plt.title(title, fontsize=14)
-        plt.legend(fontsize=11)
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-
-        filepath = os.path.join(self.output_dir, filename)
-        plt.savefig(filepath, dpi=100)
-        plt.close()
-        print(f"Loss comparison diagram saved to {filepath}")
-
     def plot_loss_statistics(self, losses, filename="loss_statistics.png"):
         """Plot loss statistics including min, max, mean, and std.
 
@@ -113,34 +82,3 @@ class Visualization:
         plt.savefig(filepath, dpi=100)
         plt.close()
         print(f"Loss statistics diagram saved to {filepath}")
-
-    def plot_metrics_dashboard(self, metrics_dict, filename="metrics_dashboard.png"):
-        """Plot multiple metrics in a dashboard format.
-
-        Args:
-            metrics_dict: Dictionary with metric names as keys and lists of values as values
-            filename: Output filename
-        """
-        num_metrics = len(metrics_dict)
-        cols = 2
-        rows = (num_metrics + 1) // 2
-
-        fig, axes = plt.subplots(rows, cols, figsize=(14, 5 * rows))
-        axes = axes.flatten()
-
-        for idx, (metric_name, values) in enumerate(metrics_dict.items()):
-            epochs = range(1, len(values) + 1)
-            axes[idx].plot(epochs, values, "b-", linewidth=2, marker="o")
-            axes[idx].set_title(metric_name, fontsize=12)
-            axes[idx].set_xlabel("Epoch")
-            axes[idx].set_ylabel("Value")
-            axes[idx].grid(True, alpha=0.3)
-
-        for idx in range(num_metrics, len(axes)):
-            fig.delaxes(axes[idx])
-
-        plt.tight_layout()
-        filepath = os.path.join(self.output_dir, filename)
-        plt.savefig(filepath, dpi=100)
-        plt.close()
-        print(f"Metrics dashboard saved to {filepath}")

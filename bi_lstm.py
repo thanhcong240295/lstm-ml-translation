@@ -45,5 +45,6 @@ class BiLSTM:
         h_backward.reverse()
 
         h_concat = [np.vstack((hf, hb)) for hf, hb in zip(h_forward, h_backward)]
-        y = np.stack(h_concat, axis=0)
+
+        y = np.concatenate([h.T for h in h_concat], axis=0)
         return y

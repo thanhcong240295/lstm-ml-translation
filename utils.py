@@ -5,7 +5,6 @@ import sys
 def validate_arguments():
     dataset_path = None
     model_path = None
-    translate_path = None
 
     if "--dataset" in sys.argv:
         dataset_idx = sys.argv.index("--dataset")

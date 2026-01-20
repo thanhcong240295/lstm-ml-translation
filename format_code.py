@@ -13,7 +13,7 @@ def run_command(cmd, description):
 
 def main():
     """Format all Python files"""
-    files = "visualization.py utils.py main.py clean.py check_code.py format_code.py lstm.py bi_lstm.py language_translation.py preprocessor.py vocab.py word2vec.py"
+    files = "visualization.py utils.py main.py clean.py check_code.py format_code.py lstm.py bi_lstm.py lstm_to_lstm.py preprocessor.py vocab.py word2vec.py activation.py attention.py"
 
     commands = [
         (f"python -m isort {files}", "isort (sorting imports)"),

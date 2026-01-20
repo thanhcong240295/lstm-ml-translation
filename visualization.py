@@ -5,26 +5,21 @@ import numpy as np
 
 
 class Visualization:
-    """Visualization utilities for training metrics and results."""
-
     def __init__(self, output_dir="result"):
         self.output_dir = output_dir
         os.makedirs(output_dir, exist_ok=True)
 
-    def plot_loss(self, losses, title="Training Loss", filename="loss.png"):
-        """Plot training loss over epochs.
-
-        Args:
-            losses: List of loss values per epoch
-            title: Title of the plot
-            filename: Output filename
-        """
+    def plot_loss(self, train_losses, val_losses=None, filename="loss.png"):
         plt.figure(figsize=(10, 6))
-        epochs = range(1, len(losses) + 1)
-        plt.plot(epochs, losses, "b-", linewidth=2, marker="o", markersize=6)
+        epochs = range(1, len(train_losses) + 1)
+        plt.plot(epochs, train_losses, "b-", linewidth=2, marker="o", markersize=6, label="Train Loss")
+        if val_losses is not None and len(val_losses) > 0:
+            plt.plot(epochs, val_losses, "r-", linewidth=2, marker="s", markersize=6, label="Val Loss")
         plt.xlabel("Epoch", fontsize=12)
         plt.ylabel("Loss", fontsize=12)
-        plt.title(title, fontsize=14)
+        plt.title("Training and Validation Loss", fontsize=14)
+        if val_losses is not None and len(val_losses) > 0:
+            plt.legend(fontsize=11)
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
 
@@ -34,12 +29,6 @@ class Visualization:
         print(f"Loss diagram saved to {filepath}")
 
     def plot_loss_statistics(self, losses, filename="loss_statistics.png"):
-        """Plot loss statistics including min, max, mean, and std.
-
-        Args:
-            losses: List of loss values
-            filename: Output filename
-        """
         fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
         epochs = range(1, len(losses) + 1)
@@ -84,13 +73,6 @@ class Visualization:
         print(f"Loss statistics diagram saved to {filepath}")
 
     def plot_data_split_cycle(self, train_count, val_count, filename="data_split_cycle.png"):
-        """Plot data split as a pie chart showing train/validation ratio.
-
-        Args:
-            train_count: Number of training samples
-            val_count: Number of validation samples
-            filename: Output filename
-        """
         fig, ax = plt.subplots(1, 1, figsize=(10, 8))
 
         total_count = train_count + val_count
@@ -124,3 +106,51 @@ class Visualization:
         plt.savefig(filepath, dpi=300, bbox_inches="tight")
         plt.close()
         print(f"Data split pie chart saved to {filepath}")
+
+    def plot_roc_curve(self, all_probs, all_targets, vocab_size, filename="roc_curve.png"):
+        from sklearn.metrics import auc, roc_curve
+        from sklearn.preprocessing import label_binarize
+
+        all_probs = np.array(all_probs)
+        all_targets = np.array(all_targets)
+
+        if len(all_targets) < 2:
+            print("Not enough samples for ROC curve")
+            return
+
+        all_targets_bin = label_binarize(all_targets, classes=range(vocab_size))
+
+        fig, ax = plt.subplots(figsize=(10, 8))
+
+        colors = plt.cm.nipy_spectral(np.linspace(0, 1, min(10, vocab_size)))
+        fpr_list = []
+        tpr_list = []
+        roc_auc_list = []
+
+        for i in range(min(10, vocab_size)):
+            try:
+                fpr, tpr, _ = roc_curve(
+                    all_targets_bin[:, i] if i < all_targets_bin.shape[1] else np.zeros(len(all_targets)),
+                    all_probs[:, i],
+                )
+                roc_auc = auc(fpr, tpr)
+                fpr_list.append(fpr)
+                tpr_list.append(tpr)
+                roc_auc_list.append(roc_auc)
+
+                ax.plot(fpr, tpr, color=colors[i], lw=2, label=f"Token {i} (AUC = {roc_auc:.3f})")
+            except Exception:
+                continue
+
+        ax.plot([0, 1], [0, 1], "k--", lw=2, label="Random Classifier")
+        ax.set_xlabel("False Positive Rate", fontsize=12)
+        ax.set_ylabel("True Positive Rate", fontsize=12)
+        ax.set_title("ROC Curves for Token Prediction (One-vs-Rest)", fontsize=14)
+        ax.legend(loc="lower right", fontsize=10)
+        ax.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        filepath = os.path.join(self.output_dir, filename)
+        plt.savefig(filepath, dpi=100, bbox_inches="tight")
+        plt.close()
+        print(f"ROC curve diagram saved to {filepath}")

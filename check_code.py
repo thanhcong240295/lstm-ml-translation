@@ -15,7 +15,7 @@ def run_command(cmd, description):
 
 def main():
     """Run all code quality checks"""
-    files = "visualization.py utils.py main.py clean.py format_code.py check_code.py lstm.py bi_lstm.py language_translation.py preprocessor.py vocab.py word2vec.py"
+    files = "visualization.py utils.py main.py clean.py format_code.py check_code.py lstm.py bi_lstm.py lstm_to_lstm.py preprocessor.py vocab.py word2vec.py attention.py activation.py"
 
     checks = [
         (f"python -m black --check {files}", "Black (code formatter check)"),

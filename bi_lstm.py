@@ -57,7 +57,7 @@ class BiLSTM:
             dh_total = dh_total[:, :, None]
 
         T = dh_total.shape[0]
-        dx_total = np.zeros((T, self.input_size, 1))
+        dx_total = self.xp.zeros((T, self.input_size, 1), dtype=self.xp.float32)
 
         dh_f_all = dh_total[:, : self.hidden_size, :]
         dh_b_all = dh_total[:, self.hidden_size :, :]
@@ -67,8 +67,8 @@ class BiLSTM:
         self.backward_lstm._init_gradients()
 
         # Forward LSTM backward
-        dh_f_next = np.zeros((self.hidden_size, 1))
-        dc_f_next = np.zeros((self.hidden_size, 1))
+        dh_f_next = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
+        dc_f_next = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
 
         for t in reversed(range(T)):
             dh_t = dh_f_all[t] + dh_f_next
@@ -76,8 +76,8 @@ class BiLSTM:
             dx_total[t] += dx_t
 
         # Backward LSTM backward
-        dh_b_prev = np.zeros((self.hidden_size, 1))
-        dc_b_prev = np.zeros((self.hidden_size, 1))
+        dh_b_prev = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
+        dc_b_prev = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
 
         for t in range(T):
             dh_t = dh_b_all[t] + dh_b_prev

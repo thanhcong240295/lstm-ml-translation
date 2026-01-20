@@ -54,8 +54,8 @@ class BahdanauAttention:
         decoder_state, encoder_outputs, alpha = self.cache
         T = encoder_outputs.shape[0]
 
-        dalpha = np.zeros_like(alpha)
-        dencoder_outputs = np.zeros_like(encoder_outputs)
+        dalpha = self.xp.zeros_like(alpha)
+        dencoder_outputs = self.xp.zeros_like(encoder_outputs)
 
         # dcontext -> dalpha
         for t in range(T):
@@ -64,10 +64,10 @@ class BahdanauAttention:
             dencoder_outputs[t] += alpha[t] * dcontext
 
         # Softmax backward
-        sum_alpha_dalpha = np.sum(alpha * dalpha, axis=0, keepdims=True)
+        sum_alpha_dalpha = self.xp.sum(alpha * dalpha, axis=0, keepdims=True)
         dscores = alpha * (dalpha - sum_alpha_dalpha)
 
-        ddecoder_state_total = np.zeros_like(decoder_state)
+        ddecoder_state_total = self.xp.zeros_like(decoder_state)
 
         for t in range(T):
             h_enc_t = encoder_outputs[t]

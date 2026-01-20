@@ -8,11 +8,12 @@ from word2vec import Word2VecEmbedding
 
 
 def main():
-    EPOCHS = 20
-    LEARNING_RATE = 0.01
+    EPOCHS = 5
+    LEARNING_RATE = 0.03
     EMBEDDING_DIM = 256
     HIDDEN_SIZE = 256
     MAX_LEN = 100
+    BATCH_SIZE = 32
 
     dataset_path, model_path, translate_text, architecture, device = validate_arguments()
 
@@ -21,7 +22,7 @@ def main():
     if translate_text:
         _run_translation(translate_text, model_path, architecture, EMBEDDING_DIM, HIDDEN_SIZE, MAX_LEN, device)
     elif dataset_path and model_path:
-        _run_training(dataset_path, model_path, architecture, EPOCHS, LEARNING_RATE, EMBEDDING_DIM, HIDDEN_SIZE, MAX_LEN, device)
+        _run_training(dataset_path, model_path, architecture, EPOCHS, LEARNING_RATE, EMBEDDING_DIM, HIDDEN_SIZE, MAX_LEN, device, BATCH_SIZE)
 
 
 def _run_translation(translate_text, model_path, architecture, embedding_dim, hidden_size, max_len, device):
@@ -46,7 +47,7 @@ def _run_translation(translate_text, model_path, architecture, embedding_dim, hi
     print(f"\nOutput: {vietnamese}")
 
 
-def _run_training(dataset_path, model_path, architecture, epochs, learning_rate, embedding_dim, hidden_size, max_len, device):
+def _run_training(dataset_path, model_path, architecture, epochs, learning_rate, embedding_dim, hidden_size, max_len, device='cpu', batch_size=32):
     print("Starting training process...")
     preprocessor = Preprocessor()
     source_dict = preprocessor.preprocess(dataset_path)
@@ -76,7 +77,8 @@ def _run_training(dataset_path, model_path, architecture, epochs, learning_rate,
             device = 'cpu'
 
     print("Starting training...")
-    language_translation.train(epochs, learning_rate, X_train, Y_train, X_val, Y_val, model_path + ".npy")
+    print(f"Batch size: {batch_size} (gradient accumulation)")
+    language_translation.train(epochs, learning_rate, X_train, Y_train, X_val, Y_val, model_path + ".npy", batch_size=batch_size)
 
 
 def _create_model(architecture, vocab_src, vocab_tgt, input_size, hidden_size, embedding_matrix_src, device='cpu'):

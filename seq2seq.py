@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 try:
     import cupy as cp
@@ -56,19 +57,21 @@ class Seq2SeqLanguageTranslation:
         self.dWy = self.xp.zeros_like(self.Wy)
         self.dby = self.xp.zeros_like(self.by)
 
-    def train(self, epochs, learning_rate, X_train, Y_train, X_val, Y_val, model_path):
+    def train(self, epochs, learning_rate, X_train, Y_train, X_val, Y_val, model_path, batch_size=32):
         best_val_loss = float("inf")
 
         for epoch in range(epochs):
-            train_loss = self._compute_train_loss(X_train, Y_train, learning_rate)
+            epoch_start = time.time()
+            train_loss = self._compute_train_loss(X_train, Y_train, learning_rate, batch_size)
             val_loss = self._compute_val_loss(X_val, Y_val)
+            epoch_time = time.time() - epoch_start
 
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 self._save_checkpoint(model_path, val_loss, is_best=True)
 
             self._save_checkpoint(model_path, val_loss, is_best=False)
-            self._print_epoch_stats(epoch, epochs, train_loss, val_loss, best_val_loss)
+            self._print_epoch_stats(epoch, epochs, train_loss, val_loss, best_val_loss, epoch_time, len(X_train))
 
     def save_model(self, path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -213,6 +216,13 @@ class Seq2SeqLanguageTranslation:
         self._backward_pass(dec_cache, enc_outputs, lr)
         return loss
 
+    def _train_step_no_update(self, x_ids, y_ids):
+        """Train step that accumulates gradients without applying them"""
+        enc_outputs, h, c = self._encoder_forward(x_ids)
+        loss, dec_cache = self._decoder_forward_train(enc_outputs, h, c, y_ids)
+        self._backward_pass_accumulate(dec_cache, enc_outputs)
+        return loss
+
     def _encoder_forward(self, x_ids):
         x_embed_seq = []
         for tok in x_ids:
@@ -276,8 +286,8 @@ class Seq2SeqLanguageTranslation:
         return avg_loss, cache
 
     def _backward_pass(self, dec_cache, enc_outputs, lr):
-        dh_next = np.zeros((self.hidden_size, 1))
-        dc_next = np.zeros((self.hidden_size, 1))
+        dh_next = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
+        dc_next = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
 
         self.dWy.fill(0)
         self.dby.fill(0)
@@ -317,12 +327,66 @@ class Seq2SeqLanguageTranslation:
         self.Wy -= lr * self.dWy
         self.by -= lr * self.dby
 
-    def _compute_train_loss(self, X_train, Y_train, learning_rate):
+    def _backward_pass_accumulate(self, dec_cache, enc_outputs):
+        """Backward pass that accumulates gradients without applying them"""
+        dh_next = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
+        dc_next = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
+
+        for step in reversed(dec_cache):
+            probs = step["probs"]
+            target = step["target"]
+            h = step["h"]
+            lstm_cache = step["lstm_cache"]
+
+            dlogits = probs.copy()
+            dlogits[target] -= 1
+
+            self.dWy += dlogits @ h.T
+            self.dby += dlogits
+
+            dh = self.Wy.T @ dlogits + dh_next
+            ddec_input, dh_next, dc_next = self.decoder.backward(dh, dc_next, lstm_cache)
+
+            dy_embed = ddec_input[: self.input_size]
+            dcontext = ddec_input[self.input_size :]
+
+            dh_attn, denc = self.attention.backward(dcontext)
+            dh_next += dh_attn
+
+            self.encoder.backward(denc)
+
+    def _apply_accumulated_gradients(self, lr, batch_size):
+        """Apply accumulated gradients with averaging over batch"""
+        avg_lr = lr / batch_size
+        
+        self.encoder.apply_gradients(avg_lr)
+        self.decoder.apply_gradients(avg_lr)
+        self.attention.apply_gradients(avg_lr)
+
+        self.Wy -= avg_lr * self.dWy
+        self.by -= avg_lr * self.dby
+        
+        self.dWy.fill(0)
+        self.dby.fill(0)
+
+    def _compute_train_loss(self, X_train, Y_train, learning_rate, batch_size=32):
         total_loss = 0
-        for x_ids, y_ids in zip(X_train, Y_train):
-            loss = self._train_step(x_ids, y_ids, learning_rate)
-            total_loss += loss
-        return total_loss / max(1, len(X_train))
+        n_samples = len(X_train)
+        
+        for i in range(0, n_samples, batch_size):
+            batch_loss = 0
+            batch_end = min(i + batch_size, n_samples)
+            actual_batch_size = batch_end - i
+            
+            for j in range(i, batch_end):
+                x_ids, y_ids = X_train[j], Y_train[j]
+                loss = self._train_step_no_update(x_ids, y_ids)
+                batch_loss += loss
+                total_loss += loss
+            
+            self._apply_accumulated_gradients(learning_rate, actual_batch_size)
+        
+        return total_loss / max(1, n_samples)
 
     def _compute_val_loss(self, X_val, Y_val):
         total_loss = 0
@@ -341,9 +405,14 @@ class Seq2SeqLanguageTranslation:
             path = model_path.replace(".npy", "_latest.npy")
             self.save_model(path)
 
-    def _print_epoch_stats(self, epoch, total_epochs, train_loss, val_loss, best_val_loss):
+    def _print_epoch_stats(self, epoch, total_epochs, train_loss, val_loss, best_val_loss, epoch_time=None, n_samples=None):
         is_best = " (BEST)" if val_loss == best_val_loss else ""
-        print(f"Epoch {epoch+1}/{total_epochs} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}{is_best}")
+        time_str = f" | Time: {epoch_time:.1f}s" if epoch_time else ""
+        speed_str = ""
+        if epoch_time and n_samples:
+            samples_per_sec = n_samples / epoch_time
+            speed_str = f" | Speed: {samples_per_sec:.1f} samples/s"
+        print(f"Epoch {epoch+1}/{total_epochs} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}{is_best}{time_str}{speed_str}")
 
     def _compute_cross_entropy_loss(self, probs, target):
         return -self.xp.log(probs[target, 0] + 1e-9)
@@ -388,7 +457,11 @@ class Seq2SeqLanguageTranslation:
             pred_id = int(self.xp.argmax(flat_probs))
         else:
             top_k_probs = top_k_probs / prob_sum
-            pred_id = int(self.xp.random.choice(top_k_ids, p=top_k_probs))
+            # CuPy requires size parameter for random.choice
+            if self.device == 'gpu':
+                pred_id = int(self.xp.random.choice(top_k_ids, size=1, p=top_k_probs)[0])
+            else:
+                pred_id = int(self.xp.random.choice(top_k_ids, p=top_k_probs))
 
         return pred_id
 

@@ -1,18 +1,23 @@
 import numpy as np
+try:
+    import cupy as cp
+except ImportError:
+    cp = np
 from lstm import LSTMCell
 
 
 class BiLSTM:
-    def __init__(self, input_size=256, hidden_size=256):
+    def __init__(self, input_size=256, hidden_size=256, xp=np):
         self.input_size = input_size
         self.hidden_size = hidden_size
+        self.xp = xp
 
-        self.forward_lstm = LSTMCell(input_size, hidden_size)
-        self.backward_lstm = LSTMCell(input_size, hidden_size)
+        self.forward_lstm = LSTMCell(input_size, hidden_size, xp)
+        self.backward_lstm = LSTMCell(input_size, hidden_size, xp)
 
     def forward(self, x_seq):
         # Normalize input to list of column vectors
-        if isinstance(x_seq, np.ndarray):
+        if isinstance(x_seq, (np.ndarray, self.xp.ndarray)):
             if x_seq.ndim == 2:
                 X_seq = [x_seq[t].reshape(-1, 1) for t in range(x_seq.shape[0])]
             elif x_seq.ndim == 3:
@@ -20,15 +25,15 @@ class BiLSTM:
             else:
                 raise ValueError("Invalid x_seq shape")
         else:
-            X_seq = [np.asarray(x).reshape(-1, 1) for x in x_seq]
+            X_seq = [self.xp.asarray(x).reshape(-1, 1) for x in x_seq]
 
         T = len(X_seq)
 
         self.forward_caches = []
         self.backward_caches = [None] * T
 
-        h_f, c_f = np.zeros((self.hidden_size, 1)), np.zeros((self.hidden_size, 1))
-        h_b, c_b = np.zeros((self.hidden_size, 1)), np.zeros((self.hidden_size, 1))
+        h_f, c_f = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32), self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
+        h_b, c_b = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32), self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
 
         h_f_list = []
         for t in range(T):
@@ -43,8 +48,8 @@ class BiLSTM:
             self.backward_caches[t] = cache
 
         # Keep (2H, 1) shape
-        h_concat = [np.vstack((f, b)) for f, b in zip(h_f_list, h_b_list)]
-        return np.stack(h_concat, axis=0)  # (T, 2H, 1)
+        h_concat = [self.xp.vstack((f, b)) for f, b in zip(h_f_list, h_b_list)]
+        return self.xp.stack(h_concat, axis=0)  # (T, 2H, 1)
 
     def backward(self, dh_total):
         # dh_total: (T, 2H) or (T, 2H, 1)

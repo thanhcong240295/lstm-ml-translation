@@ -1,51 +1,20 @@
 import numpy as np
+try:
+    import cupy as cp
+except ImportError:
+    cp = np
 from activation import Activation
 
 
 class LSTMCell:
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, xp=np):
         self.input_size = input_size
         self.hidden_size = hidden_size
-        self.activation = Activation()
+        self.xp = xp
+        self.activation = Activation(xp)
 
         self._init_weights()
         self._init_gradients()
-
-    def _init_weights(self):
-        limit = np.sqrt(1 / self.input_size)
-
-        self.Wf = np.random.uniform(-limit, limit, (self.hidden_size, self.input_size))
-        self.Uf = np.random.uniform(-limit, limit, (self.hidden_size, self.hidden_size))
-        self.bf = np.zeros((self.hidden_size, 1))
-
-        self.Wi = np.random.uniform(-limit, limit, (self.hidden_size, self.input_size))
-        self.Ui = np.random.uniform(-limit, limit, (self.hidden_size, self.hidden_size))
-        self.bi = np.zeros((self.hidden_size, 1))
-
-        self.Wo = np.random.uniform(-limit, limit, (self.hidden_size, self.input_size))
-        self.Uo = np.random.uniform(-limit, limit, (self.hidden_size, self.hidden_size))
-        self.bo = np.zeros((self.hidden_size, 1))
-
-        self.Wc = np.random.uniform(-limit, limit, (self.hidden_size, self.input_size))
-        self.Uc = np.random.uniform(-limit, limit, (self.hidden_size, self.hidden_size))
-        self.bc = np.zeros((self.hidden_size, 1))
-
-    def _init_gradients(self):
-        self.dWf = np.zeros_like(self.Wf)
-        self.dUf = np.zeros_like(self.Uf)
-        self.dbf = np.zeros_like(self.bf)
-
-        self.dWi = np.zeros_like(self.Wi)
-        self.dUi = np.zeros_like(self.Ui)
-        self.dbi = np.zeros_like(self.bi)
-
-        self.dWo = np.zeros_like(self.Wo)
-        self.dUo = np.zeros_like(self.Uo)
-        self.dbo = np.zeros_like(self.bo)
-
-        self.dWc = np.zeros_like(self.Wc)
-        self.dUc = np.zeros_like(self.Uc)
-        self.dbc = np.zeros_like(self.bc)
 
     def forward(self, x_t, h_prev, c_prev):
         f_t = self.activation.sigmoid(self.Wf @ x_t + self.Uf @ h_prev + self.bf)
@@ -63,7 +32,6 @@ class LSTMCell:
         x_t, h_prev, c_prev, f_t, i_t, o_t, c_tilde, c_t = cache
 
         tanh_ct = self.activation.tanh(c_t)
-
         do = dh_t * tanh_ct
         do_raw = do * self.activation.sigmoid_derivative(o_t)
 
@@ -95,9 +63,7 @@ class LSTMCell:
         self.dbc += dc_tilde_raw
 
         dh_prev = self.Uf.T @ df_raw + self.Ui.T @ di_raw + self.Uo.T @ do_raw + self.Uc.T @ dc_tilde_raw
-
         dc_prev = dc_total * f_t
-
         dx_t = self.Wf.T @ df_raw + self.Wi.T @ di_raw + self.Wo.T @ do_raw + self.Wc.T @ dc_tilde_raw
 
         return dx_t, dh_prev, dc_prev
@@ -129,3 +95,39 @@ class LSTMCell:
     def set_weights(self, weights):
         for k, v in weights.items():
             setattr(self, k, v)
+
+    def _init_weights(self):
+        limit = float(self.xp.sqrt(1 / self.input_size))
+
+        self.Wf = self.xp.random.uniform(-limit, limit, (self.hidden_size, self.input_size)).astype(self.xp.float32)
+        self.Uf = self.xp.random.uniform(-limit, limit, (self.hidden_size, self.hidden_size)).astype(self.xp.float32)
+        self.bf = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
+
+        self.Wi = self.xp.random.uniform(-limit, limit, (self.hidden_size, self.input_size)).astype(self.xp.float32)
+        self.Ui = self.xp.random.uniform(-limit, limit, (self.hidden_size, self.hidden_size)).astype(self.xp.float32)
+        self.bi = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
+
+        self.Wo = self.xp.random.uniform(-limit, limit, (self.hidden_size, self.input_size)).astype(self.xp.float32)
+        self.Uo = self.xp.random.uniform(-limit, limit, (self.hidden_size, self.hidden_size)).astype(self.xp.float32)
+        self.bo = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
+
+        self.Wc = self.xp.random.uniform(-limit, limit, (self.hidden_size, self.input_size)).astype(self.xp.float32)
+        self.Uc = self.xp.random.uniform(-limit, limit, (self.hidden_size, self.hidden_size)).astype(self.xp.float32)
+        self.bc = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
+
+    def _init_gradients(self):
+        self.dWf = self.xp.zeros_like(self.Wf)
+        self.dUf = self.xp.zeros_like(self.Uf)
+        self.dbf = self.xp.zeros_like(self.bf)
+
+        self.dWi = self.xp.zeros_like(self.Wi)
+        self.dUi = self.xp.zeros_like(self.Ui)
+        self.dbi = self.xp.zeros_like(self.bi)
+
+        self.dWo = self.xp.zeros_like(self.Wo)
+        self.dUo = self.xp.zeros_like(self.Uo)
+        self.dbo = self.xp.zeros_like(self.bo)
+
+        self.dWc = self.xp.zeros_like(self.Wc)
+        self.dUc = self.xp.zeros_like(self.Uc)
+        self.dbc = self.xp.zeros_like(self.bc)

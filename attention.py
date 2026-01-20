@@ -1,24 +1,29 @@
 import numpy as np
+try:
+    import cupy as cp
+except ImportError:
+    cp = np
 from activation import Activation
 
 
 class BahdanauAttention:
-    def __init__(self, encoder_output_dim, hidden_size=256):
+    def __init__(self, encoder_output_dim, hidden_size=256, xp=np):
         self.hidden_size = hidden_size
         self.encoder_output_dim = encoder_output_dim
-        self.activation = Activation()
+        self.xp = xp
+        self.activation = Activation(xp)
 
-        limit = np.sqrt(6 / (hidden_size + encoder_output_dim))
-        self.Wa = np.random.uniform(-limit, limit, (hidden_size, hidden_size))
-        self.Ua = np.random.uniform(-limit, limit, (hidden_size, encoder_output_dim))
-        self.va = np.random.uniform(-limit, limit, (1, hidden_size))
+        limit = self.xp.sqrt(6 / (hidden_size + encoder_output_dim))
+        self.Wa = self.xp.random.uniform(-limit, limit, (hidden_size, hidden_size)).astype(self.xp.float32)
+        self.Ua = self.xp.random.uniform(-limit, limit, (hidden_size, encoder_output_dim)).astype(self.xp.float32)
+        self.va = self.xp.random.uniform(-limit, limit, (1, hidden_size)).astype(self.xp.float32)
 
         self._init_gradients()
 
     def _init_gradients(self):
-        self.dWa = np.zeros_like(self.Wa)
-        self.dUa = np.zeros_like(self.Ua)
-        self.dva = np.zeros_like(self.va)
+        self.dWa = self.xp.zeros_like(self.Wa)
+        self.dUa = self.xp.zeros_like(self.Ua)
+        self.dva = self.xp.zeros_like(self.va)
 
     def forward(self, decoder_state, encoder_outputs):
         # encoder_outputs: (T, H_enc, 1)
@@ -31,11 +36,11 @@ class BahdanauAttention:
             score = self.va @ self.activation.tanh(z)
             scores.append(score[0, 0])
 
-        scores = np.array(scores).reshape(T, 1)
-        scores = scores - np.max(scores, axis=0, keepdims=True)
+        scores = self.xp.array(scores).reshape(T, 1)
+        scores = scores - self.xp.max(scores, axis=0, keepdims=True)
         alpha = self.activation.softmax(scores)
 
-        context = np.zeros((encoder_outputs.shape[1], 1))
+        context = self.xp.zeros((encoder_outputs.shape[1], 1), dtype=self.xp.float32)
         for t in range(T):
             context += alpha[t, 0] * encoder_outputs[t]
 

@@ -8,6 +8,12 @@ pillow==11.3.0
 tensorflow==2.15.1
 sacrebleu==2.4.0
 
+# GPU Support (Optional - uncomment if you have CUDA installed)
+# For CUDA 12.x:
+# cupy-cuda12x
+# For CUDA 11.x:
+# cupy-cuda11x
+
 # Dev tools
 black==24.10.0
 flake8==7.1.1

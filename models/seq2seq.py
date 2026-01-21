@@ -3,7 +3,7 @@ import time
 
 import numpy as np
 
-from layers.activation import Activation
+from shared.activation import Activation
 from layers.attention import BahdanauAttention
 from layers.bi_lstm import BiLSTM
 from layers.lstm_cell import LSTMCell

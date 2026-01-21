@@ -1,6 +1,6 @@
 import numpy as np
 
-from layers.activation import Activation
+from shared.activation import Activation
 
 
 class LSTMCell:

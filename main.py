@@ -15,8 +15,8 @@ from visualization.visualization import Visualization
 
 
 class MachineTranslationApp:
-    TRAIN_EN = "train_en"
-    TRAIN_VI = "train_vi"
+    TRAIN_EN = "src_train_en"
+    TRAIN_VI = "tgt_train_vi"
     VOCAB_SUFFIX = "_vocab.json"
     WORD2VEC_SUFFIX = "_word2vec.model"
     MODEL_SUFFIX = ".npy"
@@ -86,9 +86,10 @@ class MachineTranslationApp:
     ):
         print("Starting training process...")
         preprocessor = Preprocessor()
-        source_dict = preprocessor.preprocess(dataset_path)
-        en_sentences = source_dict[self.TRAIN_EN + ".txt"]
-        vi_sentences = source_dict[self.TRAIN_VI + ".txt"]
+        src_train_file_path = os.path.join(dataset_path, self.TRAIN_EN + ".txt")
+        tgt_train_file_path = os.path.join(dataset_path, self.TRAIN_VI + ".txt")
+        en_sentences = preprocessor.preprocess(src_train_file_path, is_src=True)
+        vi_sentences = preprocessor.preprocess(tgt_train_file_path, is_src=False)
         vocab_en, encoded_en = self._build_and_encode_vocab(en_sentences, model_path, self.TRAIN_EN, max_len)
         vocab_vi, encoded_vi = self._build_and_encode_vocab(vi_sentences, model_path, self.TRAIN_VI, max_len)
         X_train, Y_train, X_val, Y_val = self._prepare_training_data(encoded_en, encoded_vi)
@@ -97,7 +98,7 @@ class MachineTranslationApp:
         viz.plot_dataset_statistics(
             en_sentences, vi_sentences, len(X_train), len(X_val), prefix=os.path.basename(model_path)
         )
-        embedding_matrix, word2vec_model = self._train_word2vec(vocab_en, en_sentences, embedding_dim, model_path)
+        embedding_matrix, _ = self._train_word2vec(vocab_en, en_sentences, embedding_dim, model_path)
         print(f"Training Language Translation model with {architecture.upper()}...")
         language_translation = self._create_model(
             architecture, vocab_en, vocab_vi, embedding_dim, hidden_size, embedding_matrix, device=device

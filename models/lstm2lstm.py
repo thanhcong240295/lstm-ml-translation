@@ -12,7 +12,7 @@ from utils.constants import (
     SPECIAL_TOKENS,
     UNK_TOKEN,
 )
-from utils.device import get_array_module, get_device_name
+from utils.device import get_array_module
 from utils.losses import CrossEntropyLoss
 from utils.utils import compute_corpus_bleu
 from visualization.visualization import Visualization
@@ -207,14 +207,16 @@ class Lstm2LstmLanguageTranslation:
             x = self.embedding_tgt[prev_id].reshape(-1, 1)
             h, c, _ = self.decoder.forward(x, h, c)
 
+            # TODO: Temperature sampling
             logits = self.Wy @ h + self.by
             logits = logits / 1.2
 
             probs = self.activation.softmax(logits)
-            flat_probs = probs.ravel()
+            flat_probs = probs.flatten()
 
+            # TODO: Adjust probabilities to avoid repetition
             flat_probs = self._adjust_translation_probs(flat_probs, step, output_ids, len(tokens))
-            pred_id = self._sample_next_token(flat_probs, top_k=5)
+            pred_id = int(self.xp.argmax(flat_probs))
 
             if pred_id == eos_id:
                 break
@@ -223,14 +225,6 @@ class Lstm2LstmLanguageTranslation:
             prev_id = pred_id
 
         return self._format_translation_output(output_ids)
-
-    def _train_step(self, x_ids, y_ids, lr=0.01):
-        h, c, enc_cache, enc_outputs = self._encoder_forward(x_ids)
-        h0 = self.xp.mean(self.xp.concatenate(enc_outputs, axis=1), axis=1).reshape(-1, 1)[: self.hidden_size]
-        c0 = self.xp.zeros_like(h0)
-        loss, dec_cache = self._decoder_forward_train(h0, c0, y_ids)
-        self._backward_pass(dec_cache, enc_cache, lr)
-        return loss
 
     def _train_step_no_update(self, x_ids, y_ids):
         h, c, enc_cache, enc_outputs = self._encoder_forward(x_ids)
@@ -390,34 +384,6 @@ class Lstm2LstmLanguageTranslation:
         avg_loss = loss / max(1, step_count)
         return avg_loss, cache
 
-    def _backward_pass(self, dec_cache, enc_cache, lr):
-        dh = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
-        dc = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
-
-        self.dWy.fill(0)
-        self.dby.fill(0)
-
-        for prev_id, h, probs, target, lstm_cache in reversed(dec_cache):
-            dlogits = self.loss_fn.compute_gradient(probs, target)
-
-            self.dWy += dlogits @ h.T
-            self.dby += dlogits
-
-            dh_t = self.Wy.T @ dlogits + dh
-            dx, dh, dc = self.decoder.backward(dh_t, dc, lstm_cache)
-
-            self.embedding_tgt[prev_id] -= lr * dx.squeeze()
-
-        self.Wy -= lr * self.dWy
-        self.by -= lr * self.dby
-
-        for tok, cache in reversed(enc_cache):
-            dx, dh, dc = self.encoder.backward(dh, dc, cache)
-            self.embedding_src[tok] -= lr * dx.squeeze()
-
-        self.encoder.apply_gradients(lr)
-        self.decoder.apply_gradients(lr)
-
     def _backward_pass_accumulate(self, dec_cache, enc_cache):
         dh = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
         dc = self.xp.zeros((self.hidden_size, 1), dtype=self.xp.float32)
@@ -474,24 +440,6 @@ class Lstm2LstmLanguageTranslation:
             flat_probs[used_id] *= 0.05
 
         return flat_probs
-
-    def _sample_next_token(self, flat_probs, top_k=5):
-        top_k_ids = flat_probs.argsort()[-top_k:]
-        top_k_probs = flat_probs[top_k_ids]
-
-        top_k_probs = self.xp.clip(top_k_probs, 1e-9, None)
-        prob_sum = self.xp.sum(top_k_probs)
-
-        if prob_sum == 0 or not self.xp.isfinite(prob_sum):
-            pred_id = int(self.xp.argmax(flat_probs))
-        else:
-            top_k_probs = top_k_probs / prob_sum
-            if self.device == "gpu":
-                pred_id = int(self.xp.random.choice(top_k_ids, size=1, p=top_k_probs)[0])
-            else:
-                pred_id = int(self.xp.random.choice(top_k_ids, p=top_k_probs))
-
-        return pred_id
 
     def _format_translation_output(self, output_ids):
         if not output_ids:

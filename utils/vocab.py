@@ -83,8 +83,6 @@ class Vocab:
     def _encode_and_pad(self, tokens: list[str], max_len: int) -> list[int]:
         ids = self._encode(tokens)
 
-        ids = [self.word2idx[SOS_TOKEN]] + ids + [self.word2idx[EOS_TOKEN]]
-
         padded_ids = self._pad_sequence(ids, max_len)
         return padded_ids
 

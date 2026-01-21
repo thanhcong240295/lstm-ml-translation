@@ -124,9 +124,11 @@ def calculate_bleu(reference, hypothesis, max_n=4):
 
     if len(hyp_tokens) == 0:
         return 0.0
-
+    
+    # TODO: Handle edge cases where reference or hypothesis is shorter than n-grams
+    actual_max_n = min(max_n, len(ref_tokens), len(hyp_tokens))
     precisions = []
-    for n in range(1, max_n + 1):
+    for n in range(1, actual_max_n + 1):
         ref_ngrams = Counter([tuple(ref_tokens[i : i + n]) for i in range(len(ref_tokens) - n + 1)])
         hyp_ngrams = Counter([tuple(hyp_tokens[i : i + n]) for i in range(len(hyp_tokens) - n + 1)])
 

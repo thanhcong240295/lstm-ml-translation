@@ -1,9 +1,9 @@
-import os
-import sys
 import re
 import string
 import nltk
 from nltk.tokenize import word_tokenize
+
+from utils.constants import EOS_TOKEN, SOS_TOKEN
 
 nltk.download("punkt", quiet=True)
 
@@ -13,41 +13,27 @@ class Preprocessor:
         tokens = self._preprocess_data(text, lang)
         return tokens
 
-    def preprocess(self, dir_path: str, src_lang="en", tgt_lang="vi") -> dict:
-        if os.path.isabs(dir_path):
-            dataset_folder = dir_path
-        else:
-            dataset_folder = os.path.join(os.getcwd(), dir_path)
+    def preprocess(self, file_path, is_src = True) -> dict:
+        with open(file_path, "r", encoding="utf-8") as file:
+            lines = file.read().strip().split("\n")
+            print("Processing file:", file_path, "with", len(lines), "lines")
 
-        if not os.path.exists(dataset_folder) or not os.path.isdir(dataset_folder):
-            print(f"Dataset folder not found: {dataset_folder}")
-            sys.exit(1)
+        processed = []
+        lang = 'en' if is_src else 'vi'
 
-        source_text_files = [f for f in os.listdir(dataset_folder) if f.endswith(".txt")]
-        source_text = {}
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
 
-        for file_name in source_text_files:
-            file_path = os.path.join(dataset_folder, file_name)
+            tokens = self._preprocess_data(line, lang)
+            if tokens:
+                if not is_src:
+                    tokens.insert(0, SOS_TOKEN)
+                    tokens.append(EOS_TOKEN)
+                processed.append(tokens)
 
-            with open(file_path, "r", encoding="utf-8") as file:
-                lines = file.read().strip().split("\n")
-                print("Processing file:", file_name, "with", len(lines), "lines")
-
-            processed = []
-            lang = src_lang if "en" in file_name else tgt_lang
-
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-
-                tokens = self._preprocess_data(line, lang)
-                if tokens:
-                    processed.append(tokens)
-
-            source_text[file_name] = processed
-
-        return source_text
+        return processed
 
     def _preprocess_data(self, source_text: str, lang="en") -> list[str]:
         text = self._lowercase(source_text)

@@ -24,40 +24,67 @@ This project implements English-Vietnamese neural machine translation (NMT) with
 - ✅ Full BPTT (encoder + decoder)
 - ✅ Advanced sampling (Top-K, temperature, repetition penalty)
 - ✅ Word2Vec embedding training
+- ✅ **BLEU Score Evaluation** - Automatic translation quality metrics
 - ✅ Float32 precision for GPU efficiency
 - ✅ Reproducible results with seed parameter
 - ✅ Model checkpointing with best model saving
-- ✅ Automatic loss visualization
+- ✅ Automatic loss and BLEU visualization
+- ✅ **Modular architecture** - Organized by functionality
+- ✅ **Centralized loss functions** - Reusable CrossEntropyLoss class
 - ✅ Code quality tools (black, isort, flake8, pylint)
-- ✅ Clean, modular architecture
+- ✅ Shared activation module for code reuse
 
 ## 📁 Project Structure
 
 ```
 machinelearning-translation/
 ├── main.py                    # Entry point with CLI
-├── lstm_to_lstm.py           # Simple LSTM encoder-decoder
-├── seq2seq.py                # Seq2Seq with attention
-├── bi_lstm.py                # Bidirectional LSTM implementation
-├── lstm.py                   # LSTM cell implementation
-├── attention.py              # Bahdanau Attention mechanism
-├── activation.py             # Activation functions (sigmoid, tanh, softmax)
-├── word2vec.py               # Word2Vec embedding trainer
-├── vocab.py                  # Vocabulary management
-├── preprocessor.py           # Data preprocessing & tokenization
-├── utils.py                  # Utility functions for CLI
-├── visualization.py          # Loss plotting & metrics visualization
-├── check_code.py             # Code quality checker
-├── format_code.py            # Code formatter (black + isort)
-├── clean.py                  # Project cleanup script
 ├── requirements.txt          # Python dependencies (includes CuPy)
+├── pyproject.toml            # Project configuration
+├── README.md                 # This file
 ├── GPU_QUICKSTART.md         # GPU quick start guide
 ├── GPU_OPTIMIZATION.md       # Detailed GPU optimization docs
+│
+├── models/                   # Model implementations
+│   ├── lstm_to_lstm.py      # Simple LSTM encoder-decoder
+│   └── seq2seq.py           # Seq2Seq with attention
+│
+├── layers/                   # Neural network layers
+│   ├── lstm.py              # LSTM cell implementation
+│   ├── bi_lstm.py           # Bidirectional LSTM wrapper
+│   ├── attention.py         # Bahdanau Attention mechanism
+│   └── activation.py        # Activation functions (sigmoid, tanh, softmax, relu)
+│
+├── utils/                    # Utilities
+│   ├── utils.py             # CLI utilities and BLEU score calculation
+│   ├── preprocessor.py      # Data preprocessing & tokenization
+│   ├── vocab.py             # Vocabulary management
+│   ├── losses.py            # Loss functions (CrossEntropyLoss)
+│   ├── constants.py         # Special tokens and constants
+│   └── device.py            # GPU/CPU device management utilities
+│
+├── embeddings/               # Word embeddings
+│   └── word2vec.py          # Word2Vec embedding trainer
+│
+├── visualization/            # Visualization tools
+│   └── visualization.py     # Loss plotting & BLEU score visualization
+│
+├── scripts/                  # Development scripts
+│   ├── check_code.py        # Code quality checker
+│   ├── format_code.py       # Code formatter (black + isort)
+│   └── clean.py             # Project cleanup script
+│
 ├── dataset/                  # Training data
 │   ├── train.en.txt         # English source sentences
 │   └── train.vi.txt         # Vietnamese target sentences
+│
 ├── model/                    # Trained model weights
+│   └── *.keras              # Saved models
+│
 └── result/                   # Training outputs
+    ├── training_loss_*.png  # Loss curves
+    ├── bleu_scores_*.png    # BLEU score plots
+    └── loss_statistics_*.png # Statistical analysis
 ```
 
 ## 🚀 Quick Start
@@ -211,18 +238,20 @@ Vietnamese Output
 ```
 
 **Pros**: High quality, handles long sentences, dynamic context  
-**Cons**: Slower, more complex, hi GPU Support |
-|--------|---------|-------------|-------------|
-| `lstm.py` | LSTM cell | `LSTMCell` | ✅ |
-| `bi_lstm.py` | Bidirectional wrapper | `BiLSTM` | ✅ |
-| `attention.py` | Attention mechanism | `BahdanauAttention` | ✅ |
-| `activation.py` | Activations | `Activation` | ✅ |
-| `lstm_to_lstm.py` | Simple encoder-decoder | `LstmToLstmLanguageTranslation` | ✅ |
-| `seq2seq.py` | Attention-based model | `Seq2SeqLanguageTranslation` | ✅ |
-| `word2vec.py` | Embedding training | `Word2VecEmbedding` | ❌ |
-| `vocab.py` | Vocabulary | `Vocab` | ❌ |
-| `preprocessor.py` | Preprocessing | `Preprocessor` | ❌ |
-| `visualization.py` | Visualization | `Visualization` | ❌ |
+| Module | File | Purpose | Class | GPU Support |
+|--------|------|---------|-------------|-------------|
+| **Layers** | `layers/lstm.py` | LSTM cell | `LSTMCell` | ✅ |
+| | `layers/bi_lstm.py` | Bidirectional wrapper | `BiLSTM` | ✅ |
+| | `layers/attention.py` | Attention mechanism | `BahdanauAttention` | ✅ |
+| | `layers/activation.py` | Activations | `Activation` | ✅ |
+| **Models** | `models/lstm_to_lstm.py` | Simple encoder-decoder | `LstmToLstmLanguageTranslation` | ✅ |
+| | `models/seq2seq.py` | Attention-based model | `Seq2SeqLanguageTranslation` | ✅ |
+| **Utils** | `utils/losses.py` | Loss functions | `CrossEntropyLoss` | ✅ |
+| | `utils/utils.py` | CLI & BLEU scores | Various functions | ❌ |
+| | `utils/vocab.py` | Vocabulary | `Vocab` | ❌ |
+| | `utils/preprocessor.py` | Preprocessing | `Preprocessor` | ❌ |
+| **Embeddings** | `embeddings/word2vec.py` | Word2Vec training | `Word2VecEmbedding` | ❌ |
+| **Visualization** | `visualization/visualization.py` | Loss & BLEU plots | `Visualization` | ❌ |
 
 ### Advanced Features
 
@@ -239,12 +268,20 @@ Vietnamese Output
 - **EOS Blocking**: Prevent premature stopping
 - **Special Token Filtering**: Clean output
 
-### Training Optimizations:**
+### Training Optimizations
 - **Gradient Accumulation** (batch processing for speedup)
 - Teacher forcing for faster convergence
 - Gradient clipping in activations (prevents overflow)
 - Float32 precision for GPU efficiency
 - Reproducible results (seed=42)
+
+### BLEU Score Evaluation
+- **Automatic Calculation**: Computed every 5 epochs during training
+- **N-gram Support**: 1-gram through 4-gram with equal weights
+- **Sample Size**: 50 validation samples per evaluation
+- **Visualization**: Automatic plotting saved to `result/bleu_scores_*.png`
+- **Debug Output**: Shows source, reference, and hypothesis for first 3 samples
+- **Score Range**: 0.0 (worst) to 1.0 (perfect match)
 - `--architecture` : Choose `lstm-lstm` or `seq2seq` (default: lstm-lstm)
 - `--device` : Choose `cpu` or `gpu` (default: cpu)
 - `--translate` : Text to translate (for inference mode)
@@ -304,6 +341,10 @@ Starting training...
 Epoch 1/20 | Train Loss: 3.2156 | Val Loss: 2.9834 (BEST)
 Epoch 2/20 | Train Loss: 2.7821 | Val Loss: 2.6543 (BEST)
 ...
+Epoch 5/20 | Train Loss: 2.1234 | Val Loss: 2.0123 | BLEU: 0.1234
+...
+Epoch 10/20 | Train Loss: 1.5678 | Val Loss: 1.4567 | BLEU: 0.2456
+...
 ```
 
 **Performance on GPU**: ~3-10 seconds per epoch  
@@ -320,8 +361,9 @@ Epoch 2/5, Loss: 7.1256
 
 After training completes, visualizations are saved to `result/`:
 
-- **training_loss.png** - Loss curve over epochs
-- **loss_statistics.png** - 4-panel analysis:
+- **training_loss_[timestamp].png** - Loss curve over epochs
+- **bleu_scores_[timestamp].png** - BLEU score progression (computed every 5 epochs)
+- **loss_statistics_[timestamp].png** - 4-panel analysis:
   - Loss over epochs
   - Loss distribution (histogram)
   - Min/Max/Mean/Std statistics
@@ -331,7 +373,7 @@ After training completes, visualizations are saved to `result/`:
 
 ### Format Code
 ```bash
-python format_code.py
+python scripts/format_code.py
 ```
 Applies:
 - `isort` - Import sorting
@@ -339,7 +381,7 @@ Applies:
 
 ### Check Code
 ```bash
-python check_code.py
+python scripts/check_code.py
 ```
 Runs:
 - Black (formatter validation)
@@ -351,11 +393,11 @@ Runs:
 
 ### Clean Project
 ```bash
-python clean.py
+python scripts/clean.py
 ```
 Removes:
 - Generated model files
-- Cache directories
+- Cache directories (`__pycache__/`)
 - Log files
 
 ## 📚 Data Format
@@ -484,6 +526,8 @@ Models are saved in NumPy format with GPU/CPU compatibility:
     'by': output_bias,
     'encoder_Wf', 'encoder_Uf', ...  # All LSTM weights
     'decoder_Wf', 'decoder_Uf', ...  # All LSTM weights
+    'vocab_src': Vocab object,        # Source vocabulary
+    'vocab_tgt': Vocab object,        # Target vocabulary
 }
 ```
 
@@ -497,6 +541,8 @@ Models are saved in NumPy format with GPU/CPU compatibility:
     'encoder': BiLSTM object,         # Pickled
     'decoder': LSTMCell object,       # Pickled
     'attention': Attention object,    # Pickled
+    'vocab_src': Vocab object,        # Source vocabulary
+    'vocab_tgt': Vocab object,        # Target vocabulary
 }**GPU acceleration** (10-100x speedup)
 - ✅ Two architecture options
 - ✅ **Bahdanau Attention** mechanism
@@ -510,13 +556,14 @@ Models are saved in NumPy format with GPU/CPU compatibility:
 ### Limitations & Future Improvements
 - ❌ No batch processing (currently single-example)
 - ❌ No beam search decoding
-- ❌ No BLEU/METEOR evaluation
+- ✅ **BLEU Score Evaluation** - Implemented with n-gram support
+- ❌ No METEOR evaluation
 - ❌ No mixed precision (FP16) training
 - ❌ No multi-GPU support
 - 🔧 *Planned*: Batch processing for faster training
 - 🔧 *Planned*: Beam search decoding
-- 🔧 *Planned*: Automatic evaluation metrics
-- 🔧 *Planned*: Multi-GPU distributed trainr.npy")
+- 🔧 *Planned*: METEOR and other evaluation metrics
+- 🔧 *Planned*: Multi-GPU distributed training
 
 # Plot loss history
 viz = Visualization()

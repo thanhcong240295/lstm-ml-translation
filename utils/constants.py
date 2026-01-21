@@ -1,11 +1,3 @@
-"""
-Constants used throughout the machine translation project.
-
-This module defines all special tokens and their indices to ensure
-consistency across the codebase.
-"""
-
-# Special token strings
 PAD_TOKEN = "<PAD>"
 UNK_TOKEN = "<UNK>"
 SOS_TOKEN = "<SOS>"
